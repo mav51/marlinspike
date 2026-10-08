@@ -585,6 +585,8 @@ def _append_catalog_entry(entries, **entry):
 
 @lru_cache(maxsize=1)
 def _build_findings_catalog():
+    from marlinspike.engine import RUST_PROTOCOL_DISPLAY_NAMES
+
     entries = []
     source_meta = {}
 
@@ -607,7 +609,7 @@ def _build_findings_catalog():
 
     dpi_protocols = sorted({
         (_slug_to_label(name), key.replace("_", "-"))
-        for key, name in getattr(__import__("_ms_engine"), "RUST_PROTOCOL_DISPLAY_NAMES", {}).items()
+        for key, name in RUST_PROTOCOL_DISPLAY_NAMES.items()
     }, key=lambda item: item[0].lower())
     for title, proto_key in dpi_protocols:
         _append_catalog_entry(
@@ -2825,11 +2827,11 @@ def create_app():
     # header. v3.5.2 closes that:
     #  * Generate a fresh CSP nonce per request, expose it as `csp_nonce`
     #    in the Jinja context.
-    #  * Emit Content-Security-Policy with the nonce on script-src and
-    #    style-src. `'unsafe-inline'` retained for now because templates
-    #    still carry inline event handlers (onclick=) and inline style=
-    #    attributes (a removal pass is tracked for v3.6+ — UPGRADING.md
-    #    documents the gap).
+    #  * Nonces authorize script/style elements. Legacy event handlers and
+    #    style attributes need separate *-src-attr directives: browsers ignore
+    #    'unsafe-inline' in a source list that also contains a nonce.
+    #    Replace these compatibility directives with 'none' when the template
+    #    migration away from inline attributes is complete.
     #  * X-Content-Type-Options: nosniff
     #  * X-Frame-Options: DENY  (and frame-ancestors 'none' in CSP for
     #    consistency with older browsers)
@@ -2852,15 +2854,16 @@ def create_app():
     @app.after_request
     def security_headers(resp):
         nonce = getattr(g, "csp_nonce", "")
-        # CSP — keep 'unsafe-inline' on script/style-src until templates
-        # are scrubbed of inline handlers + style attributes. The nonce
-        # is the future-proofing path; once inline-everywhere is gone,
-        # drop 'unsafe-inline' (UPGRADING.md tracks this).
+        # Keep legacy attribute permissions separate from nonced elements.
+        # Putting 'unsafe-inline' beside a nonce does not enable onclick or
+        # style attributes, leaving the existing UI controls unresponsive.
         nonce_token = f"'nonce-{nonce}'" if nonce else ""
         csp_parts = [
             "default-src 'self'",
-            f"script-src 'self' {nonce_token} 'unsafe-inline'".strip(),
-            f"style-src 'self' {nonce_token} 'unsafe-inline'".strip(),
+            f"script-src 'self' {nonce_token}".strip(),
+            "script-src-attr 'unsafe-inline'",
+            f"style-src 'self' {nonce_token}".strip(),
+            "style-src-attr 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
             "connect-src 'self'",

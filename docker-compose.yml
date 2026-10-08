@@ -16,7 +16,7 @@ services:
     ports:
       - "127.0.0.1:5001:5001"
     environment:
-      - DATABASE_URL=postgresql://marlinspike:${DB_PASSWORD}@db:5432/marlinspike
+      - DATABASE_URL=postgresql+psycopg2://marlinspike:${DB_PASSWORD}@db:5432/marlinspike
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-true}
@@ -40,6 +40,12 @@ services:
     networks:
       - internal
     mem_limit: 3g
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/login', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
   # Live-capture sidecar (Linux only). Off by default — opt in with:
   #   docker compose --profile capture up -d

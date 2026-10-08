@@ -2820,8 +2820,9 @@ class TopologyBuilder:
     def _load_oui_db(override: dict = None) -> dict:
         """Load OUI database: IEEE base + ICS-specific overlay."""
         db = {}
-        # Try loading IEEE OUI database — check alongside marlinspike.py, then data/
-        base_dir = os.path.dirname(os.path.abspath(__file__))
+        # Runtime assets live at the configured project root, outside the package.
+        from marlinspike import config
+        base_dir = config.PROJECT_ROOT
         oui_path = os.path.join(base_dir, "oui.json")
         if not os.path.isfile(oui_path):
             oui_path = os.path.join(base_dir, "data", "oui.json")

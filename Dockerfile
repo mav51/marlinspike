@@ -9,6 +9,7 @@ WORKDIR /build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
+    protobuf-compiler \
     git && \
     rm -rf /var/lib/apt/lists/*
 
@@ -127,6 +128,7 @@ RUN useradd -m -u 1000 marlinspike && \
     chown -R marlinspike:marlinspike /app
 
 ENV PATH="/opt/marlinspike-malware/bin:${PATH}" \
+    MARLINSPIKE_PROJECT_ROOT=/app \
     MARLINSPIKE_DPI_BIN=/usr/local/bin/marlinspike-dpi \
     MARLINSPIKE_MALWARE_BIN=/opt/marlinspike-malware/bin/marlinspike-malware \
     MARLINSPIKE_MALWARE_RULES=/usr/share/marlinspike-malware/rules/packs

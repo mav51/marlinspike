@@ -129,6 +129,26 @@ def test_csp_includes_per_request_nonce(client):
     assert "'nonce-" in csp
 
 
+def test_csp_allows_legacy_event_and_style_attributes_separately(client):
+    """A nonce in script-src makes its unsafe-inline fallback ineffective.
+
+    Existing onclick/onchange controls and inline layout attributes need an
+    explicit attribute policy, otherwise project/upload buttons do nothing.
+    """
+    resp = client.get("/login")
+    directives = {
+        tokens[0]: tokens[1:]
+        for part in resp.headers["Content-Security-Policy"].split(";")
+        if (tokens := part.strip().split())
+    }
+    assert directives["script-src-attr"] == ["'unsafe-inline'"]
+    assert directives["style-src-attr"] == ["'unsafe-inline'"]
+    for name in ("script-src", "style-src"):
+        assert "'unsafe-inline'" not in directives[name]
+        assert any(token.startswith("'nonce-") for token in directives[name])
+    assert "'unsafe-eval'" not in directives["script-src"]
+
+
 def test_csp_nonce_changes_per_request(client):
     csps = []
     for _ in range(3):
